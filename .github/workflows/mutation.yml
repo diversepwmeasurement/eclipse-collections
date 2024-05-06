@@ -1,51 +1,53 @@
-# This workflow will build a Java project with Maven
-# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
-
-name: Mutation tests
-
-on:
-  schedule:
-    - cron: '0 13 * * 5'
-
 jobs:
   applications:
-    name: Mutation Test ${{ matrix.java-version }}
-    if: github.repository == 'eclipse/eclipse-collections'
-    strategy:
-      matrix:
-        os: [ubuntu-latest]
-        java-version: [11]
-
-    runs-on: ${{ matrix.os }}
-
     env:
       JAVA_VERSION: ${{ matrix.java-version }}
-
+    if: github.repository == 'eclipse/eclipse-collections'
+    name: Mutation Test ${{ matrix.java-version }}
+    runs-on: self-hosted
     steps:
-      - name: Git Checkout
-        uses: actions/checkout@v4
-      - name: Set JDK ${{ matrix.java-version }}
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: ${{ matrix.java-version }}
-      - name: Enable Maven Cache
-        uses: actions/cache@v4.0.0
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
-      - name: Maven Install
-        run: mvn clean install -DskipTests=true --no-transfer-progress
-        env:
-          MAVEN_OPTS: "-Xmx1g"
-      - name: Mutation Test
-        run: mvn eu.stamp-project:pitmp-maven-plugin:run -DwithHistory -DtimeoutConstant=8000 --no-transfer-progress
-        env:
-          MAVEN_OPTS: "-Xmx1g"
-      - name: Archive pitest reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: pit-reports
-          path: unit-tests/target/pit-reports
+    - continue-on-error: true
+      name: Git Checkout
+      uses: actions/checkout@v4
+    - continue-on-error: true
+      name: Set JDK ${{ matrix.java-version }}
+      uses: actions/setup-java@v4
+      with:
+        distribution: zulu
+        java-version: ${{ matrix.java-version }}
+    - continue-on-error: true
+      name: Enable Maven Cache
+      uses: actions/cache@v4.0.0
+      with:
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        path: ~/.m2/repository
+        restore-keys: '${{ runner.os }}-maven-
+
+          '
+    - continue-on-error: true
+      env:
+        MAVEN_OPTS: -Xmx1g
+      name: Maven Install
+      run: mvn clean install -DskipTests=true --no-transfer-progress
+    - continue-on-error: true
+      env:
+        MAVEN_OPTS: -Xmx1g
+      name: Mutation Test
+      run: mvn eu.stamp-project:pitmp-maven-plugin:run -DwithHistory -DtimeoutConstant=8000
+        --no-transfer-progress
+    - continue-on-error: true
+      name: Archive pitest reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: pit-reports
+        path: unit-tests/target/pit-reports
+    strategy:
+      matrix:
+        java-version:
+        - 11
+        os:
+        - ubuntu-latest
+name: Mutation tests
+on:
+  repository_dispatch:
+    types: trigger-ga___mutation.yml
